@@ -2,7 +2,7 @@
 use std::collections::HashSet;
 
 use super::{chord::Chord, Subsequence};
-use crate::types::{Interval, Note, Matrix, Octave, PitchClass, Scale, Tone};
+use crate::types::{Interval, Matrix, Note, Octave, Pitch, PitchClass, Scale, Tone};
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
 pub struct Tonic {
@@ -33,6 +33,7 @@ impl Tonic {
     pub fn pitch_class(&self) -> Option<PitchClass> { Some(self.tone?.pitch_class()) }
     pub fn note(&self) -> Option<Note> { if self.note.is_some() { self.note } else if self.tone.is_some() { Some(self.tone?.note()) } else { None } }
     pub fn velocity(&self) -> u8 { self.velocity }
+    pub fn pitch(&self) -> Option<Pitch> { Some(self.tone?.pitch()) }
 }
 
 impl IntoIterator for Tonic {

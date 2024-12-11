@@ -87,7 +87,7 @@ impl Events {
         println!("Connected to Input: {}.\nSending to Output: {}.\n", midi_in.port_name(in_port)?, midi_out.port_name(out_port)?);
         println!("Press [enter] to Exit.\n");
 
-        let mut conn_out = midi_out.connect(out_port, "audiotheorem")?;
+        // let mut conn_out = midi_out.connect(out_port, "audiotheorem")?;
         let a_ = midi_in.connect(in_port, "readin", move |stamp, message, _| { 
             let velocity: u8 = message[2];
             let index: u8 = message[1];
@@ -99,19 +99,19 @@ impl Events {
             
 
             // play audio
-            if velocity > 0 {
-                let _ = conn_out.send(&[0x90, index, velocity]);
-            } else {
-                let _ = conn_out.send(&[0x80, index, velocity]);
-            }
+            // if velocity > 0 {
+            //     let _ = conn_out.send(&[0x90, index, velocity]);
+            // } else {
+            //     let _ = conn_out.send(&[0x80, index, velocity]);
+            // }
 
             // Audio Synthesizer
-            synthesizer.note_on(0, index.into(), velocity.into());
+            // synthesizer.note_on(0, index.into(), velocity.into());
 
-            let mut left = vec![0.0; sample_count];
-            let mut right = vec![0.0; sample_count];
+            // let mut left = vec![0.0; sample_count];
+            // let mut right = vec![0.0; sample_count];
 
-            synthesizer.render(&mut left[..], &mut right[..]);
+            // synthesizer.render(&mut left[..], &mut right[..]);
 
         }, ())?;
         

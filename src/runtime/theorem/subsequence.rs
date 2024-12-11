@@ -50,8 +50,17 @@ impl Subsequence {
     // max of 143 and min of 0
     pub fn calculate_bounds(&mut self) 
         {
-            self.upper_bound = (self.upper_bound() + 7).clamp(0, 144); // 144 is the max index
-            self.lower_bound = (self.lower_bound() - 7).clamp(0, 144); // 0 is the min index
+            if self.tones.is_empty() {
+                self.upper_bound = 144;
+                self.lower_bound = 0;
+                return;
+            }
+            
+            let current_upper = self.upper_bound();
+            let current_lower = self.lower_bound();
+            
+            self.upper_bound = current_upper.saturating_add(7).clamp(0, 144);
+            self.lower_bound = current_lower.saturating_sub(7).clamp(0, 144);
         }
 
     pub fn within_bounds(&self, index: u8) -> bool 
@@ -116,25 +125,20 @@ impl Subsequence {
             for i in self.lower_bound..self.upper_bound
                 {
                     // If we find a speculative tone that is in the bounds
-                    if let mut t_tonic = speculative.iter().find(|t| t.index == i % 12).unwrap().clone()
-                        {
-                            // We want to add something to calculate nearby velocity
+                    let mut t_tonic = speculative.iter().find(|t| t.index == i % 12).unwrap().clone();
                             
-                            // We need to make sure it's not one of the tones we're already playing (at the correct index)
-                            if !self.tones.iter().any(|t| t.index == i)
-                                { 
-                                    t_tonic.index = i;
-                                    t_tonic.velocity = (prev_vel + t_tonic.velocity) / 2;
-                                    self.speculative.insert(t_tonic.clone()); 
-                                    continue;
-                                }
-
-                            if let p_tonic = self.tones.iter().find(|t| t.index == i).unwrap()
-                                { 
-                                    prev_vel = (prev_vel + p_tonic.velocity) / 2;
-                                    self.speculative.insert(p_tonic.clone()); 
-                                }
+                    // We need to make sure it's not one of the tones we're already playing (at the correct index)
+                    if !self.tones.iter().any(|t| t.index == i)
+                        { 
+                            t_tonic.index = i;
+                            t_tonic.velocity = (prev_vel + t_tonic.velocity) / 2;
+                            self.speculative.insert(t_tonic.clone()); 
+                            continue;
                         }
+
+                    let p_tonic = self.tones.iter().find(|t| t.index == i).unwrap();
+                    prev_vel = (prev_vel + p_tonic.velocity) / 2;
+                    self.speculative.insert(p_tonic.clone()); 
                 }
         }
 

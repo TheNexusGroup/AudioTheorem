@@ -32,16 +32,22 @@ fn main() {
     let rt = tokio::runtime::Runtime::new().unwrap();
 
     // Midi Sequence Buffer
-    let write_theorem: Arc<Mutex<Sequence>> = Arc::new(Mutex::new(Sequence::new())); // Going to have to make this a channel and move the mutex' inside the sequence
-    let gfx_read_theorem: Arc<Mutex<Sequence>> = Arc::clone(&write_theorem);
-    let audio_read_theorem: Arc<Mutex<Sequence>> = Arc::clone(&write_theorem);
+    let gfx_read_theorem: Arc<Mutex<Sequence>> = Arc::new(Mutex::new(Sequence::new()));
+    let audio_read_theorem: Arc<Mutex<Sequence>> = Arc::new(Mutex::new(Sequence::new()));
+
+    // Clone the write_theorem for the audio and graphics loops
+    let gfx_write = gfx_read_theorem.clone();
+    let audio_write = audio_read_theorem.clone();
 
     //////////
     // MIDI //
     //////////
 
-    // Midi Loop = // Used as a buffer to store the midi events for the graphics loop
-    rt.spawn(async move { Events::read_midi(move |index, velocity| { write_theorem.lock().unwrap().process_input(index, velocity); })});
+    // Midi Loop = // Used as a buffer to store the midi events for the graphics and audio loop
+    rt.spawn(async move { Events::read_midi(move |index, velocity| { 
+        gfx_write.lock().unwrap().process_input(index, velocity); 
+        audio_write.lock().unwrap().process_input(index, velocity); 
+    })});
 
 
 
@@ -50,43 +56,43 @@ fn main() {
     ///////////
 
     // Audio Loop
-    // rt.spawn(async move {
-    //     // Audio Settings
-    //     let wave_table_size = 1440;     // 120 samples per octave - 10 samples per pitchclass
-    //     let sample_rate = 44100;
+    rt.spawn(async move {
+        // Audio Settings
+        let wave_table_size = 1440;     // 120 samples per octave - 10 samples per pitchclass
+        let sample_rate = 44100;
 
-    //     let mut wave_table: Vec<f32> = Vec::with_capacity(wave_table_size);
-    //     for i in 0..wave_table_size { wave_table.push((i as f32 / wave_table_size as f32 * 2.0 * std::f32::consts::PI).sin()); }
+        let mut wave_table: Vec<f32> = Vec::with_capacity(wave_table_size);
+        for i in 0..wave_table_size { wave_table.push((i as f32 / wave_table_size as f32 * 2.0 * std::f32::consts::PI).sin()); }
 
-    //     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-    //     let sink = Sink::try_new(&stream_handle).unwrap();
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        let sink = Sink::try_new(&stream_handle).unwrap();
 
-    //     loop {
-    //         // get our midi data
-    //         let read_theorem = audio_read_theorem.lock().unwrap().deref().clone();
-    //         let size = read_theorem.get_size();
+        loop {
+            // get our midi data
+            let read_theorem = audio_read_theorem.lock().unwrap();
+            let size = read_theorem.get_size();
             
-    //         // clear the sink
-    //         sink.clear();
+            // clear the sink
+            sink.clear();
 
-    //         // if we have no data, sleep for a bit
-    //         if size <= 0 { let _ = sleep(Duration::from_millis(10)); continue; } 
+            // if we have no data, sleep for a bit
+            if size <= 0 { let _ = sleep(Duration::from_millis(10)); continue; } 
 
-    //         // create a new mixer
-    //         let (controller, mixer) = dynamic_mixer::mixer::<f32>(2, sample_rate);
+            // create a new mixer
+            let (controller, mixer) = dynamic_mixer::mixer::<f32>(2, sample_rate);
 
-    //         // get all the tones and add them to the mixer, and throw them into the sink
-    //         for tone in read_theorem.tones() {
-    //             let mut oscillator = Waveform::new(sample_rate, wave_table.clone());
-    //             oscillator.set_frequency(tone.pitch().frequency(Tuning::A4_440Hz));
-    //             controller.add(oscillator.convert_samples());
-    //         }
+            // get all the tones and add them to the mixer, and throw them into the sink
+            for tone in read_theorem.tones() {
+                let mut oscillator = Waveform::new(sample_rate, wave_table.clone());
+                oscillator.set_frequency(tone.pitch().unwrap().frequency(Tuning::A4_440Hz));
+                controller.add(oscillator.convert_samples());
+            }
 
-    //         // play the sink
-    //         sink.append(mixer);
-    //         sink.sleep_until_end();
-    //     }
-    // });
+            // play the sink
+            sink.append(mixer);
+            sink.sleep_until_end();
+        }
+    });
 
 
     //////////////
